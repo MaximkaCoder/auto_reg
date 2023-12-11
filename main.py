@@ -1,5 +1,7 @@
 import multiprocessing
+import os
 import threading
+import shutil
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,7 +17,16 @@ import multiprocessing
 def registration(phone_num, position):
     chrome_options = uc.ChromeOptions()
     chrome_options.add_argument("--use_subprocess")
-    browser = uc.Chrome(options=chrome_options, driver_executable_path="D:\\temp\\chromedriver.exe")
+    browser = uc.Chrome(options=chrome_options, driver_executable_path=rf"{username}\chromedriver.exe")
+    browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": """
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+        """
+})
     browser.get('https://accounts.google.com/')
     browser.set_window_position(*position)
     browser.set_window_size(400, 500)
@@ -82,7 +93,13 @@ def run_registration(position):
 
 
 if __name__ == '__main__':
-    count_of_window = 4
+    username = os.environ["USERPROFILE"]
+    if not os.path.exists(rf"{username}\chromedriver.exe"):
+        shutil.copy2(rf'{username}\AppData\Roaming\undetected_chromedriver\undetected\chromedriver-win32'
+                     r'\chromedriver.exe', rf'{username}')
+    else:
+        print("file exists")
+    count_of_window = 2
     positions = [(0, 0), (0, 500), (550, 0), (550, 500)]
 
     for i in range(count_of_window):
