@@ -1,7 +1,5 @@
 import multiprocessing
-import os
 import threading
-import shutil
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,23 +8,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 import undetected_chromedriver as uc
+from solve_captcha import solveRecaptcha
+from captcha import send_solve
 from time import sleep
+
 import multiprocessing
 
 
 def registration(phone_num, position):
     chrome_options = uc.ChromeOptions()
     chrome_options.add_argument("--use_subprocess")
-    browser = uc.Chrome(options=chrome_options, driver_executable_path=rf"{username}\chromedriver.exe")
-    browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-        """
-})
+    browser = uc.Chrome(options=chrome_options, driver_executable_path="D:\\temp\\chromedriver.exe")
     browser.get('https://accounts.google.com/')
     browser.set_window_position(*position)
     browser.set_window_size(400, 500)
@@ -54,7 +46,7 @@ def registration(phone_num, position):
         sleep(1)
         set_country = browser.find_element(By.XPATH,
                                            '//*[@id="popup-phone-sign-up"]/div[1]/div[1]/div[1]/div/div/div['
-                                           '2]/section/div[14]'
+                                           '2]/section/div[1]'
                                            )
         browser.execute_script("arguments[0].click();", set_country)
 
@@ -67,9 +59,35 @@ def registration(phone_num, position):
         reg_butt = browser.find_element(By.XPATH, '/html/body/div[4]/div/div/div[3]/form[2]/button')
         browser.execute_script("arguments[0].click();", reg_butt)
 
-        element = wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[4]/div/div/div[2]/div[2]/button')))
-        element.click()
-        # browser.save_screenshot("scr.png")
+        wait.until(EC.presence_of_element_located((By.ID, 'g-recaptcha-response')))
+
+        ######################################################
+
+        result = solveRecaptcha(
+            "6LfXp8kjAAAAACn75MdK75tol2FHjid-RNSlE0zr",
+            "https://vulkanvegas.com/ru/register"
+        )
+        #
+        code = result['code']
+        #
+        print(code)
+        #
+        element = (By.ID, 'g-recaptcha-response')
+        WebDriverWait(browser, 120).until(
+            EC.presence_of_element_located(element)
+        )
+        #
+        browser.execute_script("document.getElementById('g-recaptcha-response').innerHTML = " + "'" + code + "'")
+        # sleep(5)
+        ######################################################
+        sleep(5)
+        target_div = browser.find_element(By.XPATH,
+                                          "/html/body/div[4]/div/div/div[3]/form[2]/div[4]/div/div[1]")
+        new_input = browser.execute_script('return arguments[0].appendChild(document.createElement("input"))',
+                                           target_div)
+        browser.execute_script('arguments[0].setAttribute("type", "submit")', new_input)
+        browser.execute_script('arguments[0].setAttribute("value", "send")', new_input)
+        new_input.send_keys(Keys.RETURN)
         sleep(60)
         browser.quit()
     except Exception:
@@ -86,20 +104,14 @@ def run_registration(position):
         f.seek(0)  # rewind the file
         for line in lines[1:]:  # write all the other lines back into the file
             f.write(line)
-        f.truncate()  # remove any leftover whitespace
+        # f.truncate()  # remove any leftover whitespace
 
     t = threading.Thread(target=registration, args=(phone_num, position))
     t.start()
 
 
 if __name__ == '__main__':
-    username = os.environ["USERPROFILE"]
-    if not os.path.exists(rf"{username}\chromedriver.exe"):
-        shutil.copy2(rf'{username}\AppData\Roaming\undetected_chromedriver\undetected\chromedriver-win32'
-                     r'\chromedriver.exe', rf'{username}')
-    else:
-        print("file exists")
-    count_of_window = 2
+    count_of_window = 1
     positions = [(0, 0), (0, 500), (550, 0), (550, 500)]
 
     for i in range(count_of_window):
